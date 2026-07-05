@@ -1,5 +1,8 @@
 from pydantic_settings import BaseSettings
 from typing import List, Optional
+import os
+
+
 
 
 class Settings(BaseSettings):
@@ -13,7 +16,7 @@ class Settings(BaseSettings):
     FILE_MAX_SIZE: int
     FILE_ALLOWED_IMAGES_TYPES: List[str]
 
-    UPLOAD_DIR: str
+    UPLOAD_DIR: str 
 
     model_config = {
         "env_file": ".env",
