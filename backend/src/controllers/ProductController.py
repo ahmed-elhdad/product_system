@@ -169,7 +169,6 @@ class ProductController(BaseController):
 
             product_oid = ObjectId(product_id)
 
-            # تجهيز قاموس البيانات للتعديل
             update_data = {}
             if title is not None:
                 update_data["title"] = title
@@ -182,9 +181,7 @@ class ProductController(BaseController):
             if stock is not None:
                 update_data["stock"] = stock
 
-            # معالجة الصور إذا تم إرسال صور جديدة
             if images:
-                # 1. قائمة منفصلة تماماً لتجميع الروابط النصية للصور
                 saved_images_urls = []
 
                 BASE_DIR = os.path.dirname(
@@ -193,7 +190,6 @@ class ProductController(BaseController):
                 UPLOAD_DIR = os.path.join(BASE_DIR, "uploads", "products")
                 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-                # 2. اللف على ملفات الـ UploadFile الأصلية فقط
                 for image in images:
                     valid_file, signal = self.validate_uploaded_image(image)
                     if not valid_file:
@@ -209,21 +205,17 @@ class ProductController(BaseController):
                     with open(file_path, "wb") as buffer:
                         buffer.write(content)
 
-                    # توليد الرابط وإضافته للمصفوفة المنفصلة
                     base_url = str(request.base_url)
                     image_url = f"{base_url}uploads/products/{unique_filename}"
                     saved_images_urls.append(image_url)
 
-                # 3. بعد انتهاء الـ loop بنجاح، نضع مصفوفة النصوص داخل update_data
                 update_data["images"] = saved_images_urls
 
-            # التحقق إذا لم يتم إرسال أي بيانات لتعديلها
             if not update_data:
                 raise HTTPException(
                     status_code=400, detail="No data provided for update"
                 )
 
-            # تحديث البيانات في MongoDB
             result = await self.collection.find_one_and_update(
                 {"_id": product_oid},
                 {"$set": update_data},
@@ -233,7 +225,6 @@ class ProductController(BaseController):
             if not result:
                 raise HTTPException(status_code=404, detail="Product not found")
 
-            # تجهيز الـ Response وحل مشكلة الـ ObjectId
             result["id"] = str(result["_id"])
             del result["_id"]
 
@@ -258,9 +249,8 @@ class ProductController(BaseController):
             if not result:
                 raise HTTPException(status_code=404, detail="Product not found")
 
-            # --- التعديل لحل مشكلة الـ Serialization ---
-            result["id"] = str(result["_id"])  # إضافة المعرف كـ String
-            del result["_id"]  # حذف حقل الـ ObjectId الأصلي لمنع الخطأ
+            result["id"] = str(result["_id"])  
+            del result["_id"]  
             # --------------------------------------------
 
             return {"message": "Product deleted successfully", "product": result}
