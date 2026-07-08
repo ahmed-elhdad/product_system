@@ -1,6 +1,11 @@
 import streamlit as st
 import pandas as pd
-from src.controllers import get_all_products,update_product
+import json
+from src.controllers import (
+    get_all_products,
+    update_product,
+    create_product,
+)  # 👈 أضفنا دالة الإنشاء هنا
 
 st.set_page_config(page_title="Product Hub - Dashboard", layout="wide")
 
@@ -15,7 +20,7 @@ st.markdown(
     [data-testid="stSidebar"] * {
         color: #d1d5db !important;
     }
-    
+
     /* تنسيق الحاويات والبطاقات */
     .stats-container {
         display: flex;
@@ -26,7 +31,7 @@ st.markdown(
         font-size: 14px;
         color: #6b7280;
     }
-    
+
     /* تنسيق الـ Badges (الحالات) */
     .badge {
         padding: 4px 12px;
@@ -39,7 +44,7 @@ st.markdown(
     .bg-blue { background-color: #e0f2fe; color: #075985; }
     .bg-orange { background-color: #ffedd5; color: #9a3412; }
 
-    /* تنسيق فورم التعديل (المربع الأزرق) */
+    /* تنسيق فورم التعديل والإضافة (المربع الأزرق) */
     .edit-card {
         border: 2px solid #3498db;
         border-radius: 12px;
@@ -47,7 +52,7 @@ st.markdown(
         background-color: #ffffff;
         margin-top: 20px;
     }
-    
+
     /* أزرار الجدول */
     .stButton>button {
         border-radius: 6px;
@@ -58,7 +63,6 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-
 
 
 # 4. بناء الشريط الجانبي (Sidebar)
@@ -88,8 +92,12 @@ with col_search:
     st.text_input("", placeholder="🔍 Search products...", label_visibility="collapsed")
 
 with col_add:
+    # 🟢 تعديل 1: عند الضغط على الزر، نقوم بتفعيل حالة الإضافة وتصفير حالة التعديل
     if st.button("➕ Add Product", type="primary", use_container_width=True):
-        st.toast("Add Product Logic triggered!")
+        st.session_state.adding_product = True
+        if "editing_product" in st.session_state:
+            del st.session_state.editing_product
+        # st.rerun()
 
 # إحصائيات سريعة
 st.markdown(
@@ -104,11 +112,9 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# 6. جدول المنتجات (بناء يدوي ليطابق التصميم)
-
+# 6. جدول المنتجات
 products = get_all_products()
 h1, h2, h3, h4, h5, h6, h7 = st.columns([1, 2, 1.5, 1, 1, 1, 1.5])
-# # رؤوس الجدول
 h1.write("**Product ID**")
 h2.write("**Product title**")
 h3.write("**Category**")
@@ -125,8 +131,7 @@ for p in products:
     r1.write(f"{p['id'][:3]}")
     r2.write(p["title"])
 
-    # تنسيق الـ Badges للفئات والحالة
-    cat_color = "bg-blue" if p["category"] == "Electronics" else "bg-orange"
+    cat_color = "bg-blue" if p["category"].lower() == "electronics" else "bg-orange"
     r3.markdown(
         f'<span class="badge {cat_color}">{p["category"]}</span>',
         unsafe_allow_html=True,
@@ -134,23 +139,34 @@ for p in products:
 
     r4.write(f"${p['price']}")
     r5.write(str(p["stock"]))
-    
-    status_color = "bg-green" if p["stock"]  >1 else "bg-red"
-    status="in stock" if p["stock"]  >1 else "out of stock"
+
+    status_color = "bg-green" if p["stock"] > 1 else "bg-red"
+    status = "in stock" if p["stock"] > 1 else "out of stock"
     r6.markdown(
         f'<span class="badge {status_color}">{status}</span>',
         unsafe_allow_html=True,
     )
 
-    # أزرار العمليات
     btn_col1, btn_col2 = r7.columns(2)
     if btn_col1.button("Edit", key=f"edit_{p['id']}"):
         st.session_state.editing_product = p
+        if "adding_product" in st.session_state:
+            st.session_state.adding_product = False
+        st.rerun()
+
     if btn_col2.button("Del", key=f"del_{p['id']}"):
         st.error(f"Deleting {p['id']}...")
 
 
+# 7. إدارة النوافذ المنبثقة (Forms Management)
 from src.forms.EditForm import edit_form
 
+# أولاً: عرض فورم التعديل إذا تم تفعيله
 if "editing_product" in st.session_state:
     edit_form()
+
+# ثانياً: 🟢 تعديل 2: فورم إضافة منتج جديد (Create Product Form)
+if "adding_product" in st.session_state and st.session_state.adding_product:
+    from src.forms.CreateProductForm import create_form
+
+    create_form()
